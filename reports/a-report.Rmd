@@ -1,5 +1,5 @@
 ---
-title: "REPLACE ME"
+title: "Relações... parlamentares e Twitter"
 output:
     html_document:
     df_print: paged
@@ -7,11 +7,223 @@ theme: sandstone
 ---
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+options(scipen=999)
 library(tidyverse)
+library(ggplot2)
+library(modelr)
+library(broom)
 source(here::here("code/lib.R"))
 theme_set(theme_bw())
 ```
 
+## Os dados
+Leitura dos dados da atividade dos parlamentares em 2019.
 ```{r read}
 atividade = read_projectdata()
+
+glimpse(atividade)
+```
+
+Removendo NA das colunas a serem usadas na regressão, já que apenas é possível gerar o modelo a partir de dados numéricos.
+```{r}
+parlamentares_twitter = atividade  %>% 
+  filter(!is.na(twitter) & !is.na(segue)) %>% 
+  mutate(tuitou = !is.na(twitter) & (n_proprio + n_retweet > 0))
+
+glimpse(parlamentares_twitter)
+```
+
+## Relações entre as características do parlamentar e o engajamento total 
+
+As características relevantes a serem consideradas para o modelo são: qual a casa (senado/câmara) do parlamentar, quantas pessoas ele segue, por quantas ele é seguido, quanto ele tuíta e quanto ele retuíta. 
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_total, casa)) +
+  geom_point() +
+  scale_x_log10()
+```
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_total, segue)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+  
+```
+
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_total, seguidores)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+```
+
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_total,n_proprio)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+```
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_total,n_retweet)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+```
+Logo, é necessário transformar as variáveis para sua forma logarítma na base 10.
+```{r}
+parlamentares_twitter_log = parlamentares_twitter %>%
+  mutate(engaj_total_log = log10(engaj_total+1), 
+         segue_log = log10(segue+1),
+           seguidores_log = log10(seguidores+1),
+           n_retweet_log = log10(n_retweet+1),
+           n_proprio_log = log10(n_proprio+1))
+# %>%  filter(is.finite(seguidores_log) & is.finite(segue_log) & is.finite(n_retweet_log)  & is.finite(n_proprio_log))
+```
+
+
+### Modelo de Regressão Linear para o Engajamento Total
+
+```{r}
+lm_total1 = lm(engaj_total_log ~ segue_log,
+   data=parlamentares_twitter_log)
+
+lm_total2 = lm(engaj_total_log ~ segue_log + seguidores_log,
+   data=parlamentares_twitter_log)
+
+lm_total3 = lm(engaj_total_log ~ segue_log + seguidores_log +  n_retweet_log,
+   data=parlamentares_twitter_log)
+
+lm_total4 = lm(engaj_total_log ~ segue_log + seguidores_log +  n_retweet_log + n_proprio_log + casa,
+   data=parlamentares_twitter_log)
+
+```
+
+```{r}
+tidy(lm_total1)
+glance(lm_total1)
+
+tidy(lm_total2)
+glance(lm_total2)
+
+tidy(lm_total3)
+glance(lm_total3)
+
+tidy(lm_total4)
+glance(lm_total4)
+```
+
+
+```{r}
+para_plotar_modelo = parlamentares_twitter_log %>% 
+  data_grid(n_proprio_log = seq_range(n_proprio_log, 10), # Crie um vetor de 10 valores no range
+            segue_log = mean(segue_log), 
+            seguidores_log = mean(seguidores_log), # Crie um vetor de 10 valores no range
+            n_retweet_log = mean(n_retweet_log), # todos na média
+            casa = c("câmara", "senado")) %>% 
+  add_predictions(lm_total4)
+glimpse(para_plotar_modelo)
+```
+
+Visualizando log log: 
+
+```{r}
+ggplot(data = parlamentares_twitter_log, aes(x = n_proprio_log)) + 
+  geom_point(aes(y = seguidores_log)) + 
+  geom_line(data = para_plotar_modelo, aes(y = pred, color=casa), size = 1.5)
+```
+
+```{r}
+ggplot(data = parlamentares_twitter_log, aes(x = 10**n_proprio_log)) + 
+  # geom_point(aes(y = 10**seguidores_log)) +
+  geom_line(data = para_plotar_modelo, aes(y = 10**pred,color=casa), size = 1.5)
+```
+
+## Engajamento mediano
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_mediano, casa)) +
+  geom_point() +
+  scale_x_log10()
+```
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_mediano, segue)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+  
+```
+
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_mediano, seguidores)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+```
+
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_mediano,n_proprio)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+```
+
+```{r}
+parlamentares_twitter %>%
+  ggplot(aes(engaj_mediano,n_retweet)) +
+  geom_point() +
+  scale_x_log10()+
+  scale_y_log10()
+```
+Logo, é necessário transformar as variáveis para sua forma logarítma na base 10.
+```{r}
+parlamentares_twitter_log = parlamentares_twitter_log %>%
+  mutate(engaj_mediano_log = log10(engaj_mediano + 1 )) 
+```
+
+
+### Modelo de Regressão Linear para o Engajamento Total
+
+```{r}
+lm_mediano1 = lm(engaj_mediano_log ~ segue_log,
+   data=parlamentares_twitter_log)
+
+lm_mediano2 = lm(engaj_mediano_log ~ segue_log + seguidores_log,
+   data=parlamentares_twitter_log)
+
+lm_mediano3 = lm(engaj_mediano_log ~ segue_log + seguidores_log +  n_retweet_log,
+   data=parlamentares_twitter_log)
+
+lm_mediano4 = lm(engaj_mediano_log ~ segue_log + seguidores_log +  n_retweet_log + n_proprio_log,
+   data=parlamentares_twitter_log)
+
+```
+
+```{r}
+tidy(lm_mediano1)
+glance(lm_mediano1)
+
+tidy(lm_mediano2)
+glance(lm_mediano2)
+
+tidy(lm_mediano3)
+glance(lm_mediano3)
+
+tidy(lm_mediano4)
+glance(lm_mediano4)
 ```
