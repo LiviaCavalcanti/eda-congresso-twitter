@@ -1,5 +1,5 @@
 ---
-title: "Relações... parlamentares e Twitter"
+title: "Engajamento dos parlamentares no Twitter"
 output:
     html_document:
     df_print: paged
@@ -41,49 +41,55 @@ As características relevantes a serem consideradas para o modelo são: qual a c
 ### Distribuição das Probabilidades
 
 Para a variável categórica `casa`, os dados estão dentro do esperado, sendo os únicos valores existentes `câmara` e `senado`.
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_total, casa)) +
   geom_point() +
-  scale_x_log10()
+  scale_x_log10()+
+  labs(x="Casa", y="Engajamento mediano")
 ```
 
 Para os demais dados, é preciso aplicar a operação logarítmica na base 10 para que seja plausível o uso de uma reta para explicá-los.
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_total, segue)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Seguidos", y="Engajamento mediano")
   
 ```
 
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_total, seguidores)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Seguidores", y="Engajamento mediano")
 ```
 
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_total,n_proprio)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Número de Tweets Próprios", y="Engajamento mediano")
 ```
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_total,n_retweet)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Número de Retweets", y="Engajamento mediano")
 ```
-Logo, é necessário transformar as variáveis para sua forma logarítma na base 10 antes de usá-las como entrada para um modelo linear.
+
+Logo, para tranformá-las para logarítmo na base 10, foi feita, anteriormente, a adição a 1 a fim de evitar que resultasse em infinito.
 ```{r}
 parlamentares_twitter_log = parlamentares_twitter %>%
   mutate(engaj_total_log = log10(engaj_total+1), 
@@ -110,10 +116,12 @@ O único fator que é inversamente proporcional à variável resposta é a quant
 
 Por fim, o atributo `casa` possui a menor magnitude de coeficiente no modelo. Olhando o intervalo de confiança, ele é o único que pode não influenciar no modelo, já que o zero está incluso.
 
+O R² ajustado mostra um bom modelo que explica, aproximadamente, 76% dos dados.
+
 
 ### Visualizando o modelo
 
-Para visualizar um modelo de regressão múltipla, é preciso 
+Para visualizar um modelo de regressão múltipla facilmente, podemos fixar os valores de algumas variáveis e deixar outras livres. Nesta análise foram varidos o número de tweets que não são retweets ou retweets com comentário e a casa. Logo o número de pessoas que são seguidas e que seguem a conta do político e o número de retweets foram fixados na média de cada um deles.
 ```{r}
 para_plotar_modelo = parlamentares_twitter_log %>% 
   data_grid(n_proprio_log = seq_range(n_proprio_log, 10), 
@@ -125,64 +133,78 @@ para_plotar_modelo = parlamentares_twitter_log %>%
 glimpse(para_plotar_modelo)
 ```
 
-Visualizando log log: 
+Visualizando os valores tranformados, na escala logarítmica: 
 
 ```{r}
 ggplot(data = parlamentares_twitter_log, aes(x = n_proprio_log)) + 
-  geom_point(aes(y = seguidores_log)) + 
-  geom_line(data = para_plotar_modelo, aes(y = pred, color=casa), size = 1.5)
+  geom_point(aes(y = engaj_total_log)) + 
+  geom_line(data = para_plotar_modelo, aes(y = pred, color=casa), size = 1.5) +
+  labs(x="Números da Atividade Própria", y="Engajamento total predito", color="Casa")
 ```
 
+
+Considerando os dados originais, vê-se que a casa tem grande influência no crescimento da curva.
 ```{r}
 ggplot(data = parlamentares_twitter_log, aes(x = 10**n_proprio_log)) + 
-  # geom_point(aes(y = 10**seguidores_log)) +
-  geom_line(data = para_plotar_modelo, aes(y = 10**pred,color=casa), size = 1.5)
+  geom_line(data = para_plotar_modelo, aes(y = 10**pred,color=casa), size = 1.5) +
+  labs(x="Números da Atividade Própria", y="Valor predito", color="Casa")
 ```
 
 ## Engajamento mediano
 
-```{r}
+Faremos a mesma análise considerando o engajamento mediano dos representantes. Portanto, começaremos imprimindo os gráficos para a análise visual da distribuição dos dados e investigação de anormalidades.
+
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_mediano, casa)) +
   geom_point() +
-  scale_x_log10()
+  scale_x_log10()+
+  labs(x="Casa", y="Engajamento mediano")
 ```
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_mediano, segue)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Seguidos", y="Engajamento mediano")
   
 ```
 
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_mediano, seguidores)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Seguidores", y="Engajamento mediano")
 ```
 
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_mediano,n_proprio)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Número de Tweets Próprios", y="Engajamento mediano")
 ```
 
-```{r}
+```{r warning=F}
 parlamentares_twitter %>%
   ggplot(aes(engaj_mediano,n_retweet)) +
   geom_point() +
   scale_x_log10()+
-  scale_y_log10()
+  scale_y_log10()+
+  labs(x="Número de Retweets", y="Engajamento mediano")
 ```
-Logo, é necessário transformar as variáveis para sua forma logarítma na base 10.
+
+
+Ao contrário do que foi visto para a variável resposta anterior, os dados se apresentam mais dispersos, denunciando uma correlação mais baixa delas com o engajamento mediano. Mas a quantidade de seguidores mostrou-se com uma tendência crescente de forma forte.
+
+Faremos, também, como anteriormente transformando o enjamento mediano para o seu logarítmo na base 10.
 ```{r}
 parlamentares_twitter_log = parlamentares_twitter_log %>%
   mutate(engaj_mediano_log = log10(engaj_mediano + 1 )) 
@@ -201,7 +223,7 @@ lm_mediano2 = lm(engaj_mediano_log ~ segue_log + seguidores_log,
 lm_mediano3 = lm(engaj_mediano_log ~ segue_log + seguidores_log +  n_retweet_log,
    data=parlamentares_twitter_log)
 
-lm_mediano4 = lm(engaj_mediano_log ~ segue_log + seguidores_log +  n_retweet_log + n_proprio_log,
+lm_mediano4 = lm(engaj_mediano_log ~ segue_log + seguidores_log +  n_retweet_log + n_proprio_log + casa,
    data=parlamentares_twitter_log)
 
 ```
@@ -216,6 +238,35 @@ glance(lm_mediano2)
 tidy(lm_mediano3)
 glance(lm_mediano3)
 
-tidy(lm_mediano4)
+tidy(lm_mediano4, conf.int = T)
 glance(lm_mediano4)
+```
+
+
+
+Bem como poderia ser visto nos gráficos iniciais, os dados explicam fracamente o engajamento médio, de modo que o R² ajustado é de 57%.
+A casa e o número de tweets próprios admitem coeficiente zero, sendo pouco explicativos. Enquanto que o número de contas seguidas contribui negativamente com o engajamento mediano, com magnitude aproximada ao número de retweets. Já o número de seguidores é o principal fator relacionado, como visto anteriormente.
+
+
+### Visualizando o modelo
+
+Para visualizar um modelo de regressão múltipla, é preciso 
+```{r}
+para_plotar_modelo = parlamentares_twitter_log %>% 
+  data_grid(n_proprio_log = seq_range(n_proprio_log, 10), 
+            segue_log = mean(segue_log), 
+            seguidores_log = mean(seguidores_log), 
+            n_retweet_log = mean(n_retweet_log), 
+            casa = c("câmara", "senado")) %>% 
+  add_predictions(lm_mediano4)
+glimpse(para_plotar_modelo)
+```
+
+Visualizando as predições com os dados, vê-se que a natureza destes não é explicável pela regressão obtida: 
+
+```{r}
+ggplot(data = parlamentares_twitter_log, aes(x = n_proprio_log)) + 
+  geom_point(aes(y = engaj_mediano_log)) + 
+  geom_line(data = para_plotar_modelo, aes(y = pred, color=casa), size = 1.5) +
+  labs(x="Números da Atividade Própria", y="Engajamento mediano predito", color="Casa")
 ```
